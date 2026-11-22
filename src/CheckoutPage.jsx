@@ -531,7 +531,7 @@ export default function CheckoutPage({ onNavigateHome }) {
             <div className="checkout-video-player-wrap" onClick={handlePlayVideo}>
               <video
                 ref={videoRef}
-                src="/assets/How-to-Use-AI-Video-Editing-System-Blizmatt-Digital.mp4"
+                src="/assets/margam360_how_to_use_ai_reel_system.mp4"
                 poster="/assets/how-to-use-claude-ai-reels-system-poster-1.webp"
                 controls={isPlayingVideo}
                 playsInline
