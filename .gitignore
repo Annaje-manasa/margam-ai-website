@@ -3,4 +3,5 @@ dist
 scratch
 .DS_Store
 *.log
+.idempotency_store.json
 

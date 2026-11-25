@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node tests/whopWebhook.test.js",
+    "server": "node server/index.js"
   },
   "keywords": [],
   "author": "",

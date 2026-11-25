@@ -549,8 +549,261 @@ export function useLandingScript(containerRef, contentKey, isActive = true) {
       window.addEventListener('resize', handleScrollOrResize, { passive: true });
     }
 
+    // --- 12. Competitor Inspiration Reels Gallery & Live Video Animations ---
+    const galleryContainer = s.querySelector('.reels-gallery-container');
+    const galleryPrevBtn = s.querySelector('#gallery-prev');
+    const galleryNextBtn = s.querySelector('#gallery-next');
+    const videoLightbox = s.querySelector('#video-lightbox');
+    const lightboxPlayer = s.querySelector('#lightbox-player');
+    const lightboxTitle = s.querySelector('#lightbox-title');
+    const lightboxClose = s.querySelector('#lightbox-close');
+    const lightboxPrev = s.querySelector('#lightbox-prev');
+    const lightboxNext = s.querySelector('#lightbox-next');
+    const reelCards = Array.from(s.querySelectorAll('.reel-card'));
+
+    let currentLightboxIdx = 0;
+    let autoScrollRaf = null;
+    let pauseUntil = 0;
+    let dragging = false;
+
+    const pauseAuto = () => {
+      pauseUntil = performance.now() + 4500;
+    };
+
+    // Mount background video preview iframes lazily via IntersectionObserver
+    const cardVideoObservers = [];
+    reelCards.forEach((box) => {
+      const mount = () => {
+        if (box.querySelector('iframe') || box.querySelector('video')) return;
+        const src = box.getAttribute('data-src');
+        if (!src) return;
+        if (src.endsWith('.mp4') || src.includes('.mp4')) {
+          const video = document.createElement('video');
+          video.src = src;
+          video.muted = true;
+          video.autoplay = true;
+          video.loop = true;
+          video.playsInline = true;
+          video.setAttribute('aria-hidden', 'true');
+          video.tabIndex = -1;
+          video.oncanplay = () => {
+            box.classList.add('has-video');
+          };
+          box.prepend(video);
+        } else {
+          const frame = document.createElement('iframe');
+          frame.src = `${src}?autoplay=true&loop=true&captions=false&background=true`;
+          frame.title = 'Muted video preview';
+          frame.referrerPolicy = 'origin';
+          frame.tabIndex = -1;
+          frame.setAttribute('aria-hidden', 'true');
+          frame.allow = 'autoplay; encrypted-media';
+          frame.onload = () => {
+            box.classList.add('has-video');
+          };
+          box.prepend(frame);
+        }
+      };
+
+      if ('IntersectionObserver' in window) {
+        const obs = new IntersectionObserver(
+          (entries) => {
+            if (entries.some((e) => e.isIntersecting)) {
+              mount();
+              obs.disconnect();
+            }
+          },
+          { rootMargin: '300px' }
+        );
+        obs.observe(box);
+        cardVideoObservers.push(obs);
+      } else {
+        mount();
+      }
+    });
+
+    // Auto-scroll loop matching the inspirational website (Yonko Media)
+    let autoPosition = galleryContainer ? galleryContainer.scrollLeft : 0;
+    let lastFrame = performance.now();
+    let direction = 1;
+
+    const autoScroll = (now) => {
+      const elapsed = Math.min(now - lastFrame, 50);
+      lastFrame = now;
+
+      if (galleryContainer) {
+        const isLightboxOpen = videoLightbox && videoLightbox.open;
+        const isBlocked =
+          dragging ||
+          now < pauseUntil ||
+          document.hidden ||
+          isLightboxOpen;
+
+        if (isBlocked) {
+          autoPosition = galleryContainer.scrollLeft;
+        } else {
+          const max = galleryContainer.scrollWidth - galleryContainer.clientWidth;
+          if (max > 10) {
+            autoPosition = autoPosition + direction * elapsed * 0.055;
+            if (autoPosition >= max - 2) {
+              autoPosition = max - 2;
+              direction = -1;
+            } else if (autoPosition <= 2) {
+              autoPosition = 2;
+              direction = 1;
+            }
+            galleryContainer.scrollLeft = autoPosition;
+          }
+        }
+      }
+
+      autoScrollRaf = requestAnimationFrame(autoScroll);
+    };
+
+    if (galleryContainer) {
+      autoPosition = galleryContainer.scrollLeft;
+      autoScrollRaf = requestAnimationFrame(autoScroll);
+    }
+
+    const openVideoAtIndex = (idx) => {
+      pauseAuto();
+      if (!videoLightbox || reelCards.length === 0) return;
+      currentLightboxIdx = (idx + reelCards.length) % reelCards.length;
+      const card = reelCards[currentLightboxIdx];
+      const src = card.getAttribute('data-src');
+      const title = card.getAttribute('data-title') || 'Video';
+      const ratio = card.getAttribute('data-ratio') || '9/16';
+
+      if (lightboxTitle) lightboxTitle.textContent = title;
+      if (lightboxPlayer) {
+        const parts = ratio.split('/').map(Number);
+        const val = parts[0] / (parts[1] || 1);
+        lightboxPlayer.style.aspectRatio = ratio;
+        lightboxPlayer.style.width = `min(86vw, 960px, ${68 * val}dvh)`;
+        if (src.endsWith('.mp4') || src.includes('.mp4')) {
+          lightboxPlayer.innerHTML = `<video src="${src}" controls autoplay playsinline style="width:100%;height:100%;object-fit:contain;border-radius:12px;background:#000;"></video>`;
+        } else {
+          lightboxPlayer.innerHTML = `<iframe src="${src}?autoplay=true&captions=false" title="${title}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="origin"></iframe>`;
+        }
+      }
+
+      if (typeof videoLightbox.showModal === 'function') {
+        if (!videoLightbox.open) videoLightbox.showModal();
+      } else {
+        videoLightbox.setAttribute('open', '');
+      }
+    };
+
+    const closeLightbox = () => {
+      pauseAuto();
+      if (!videoLightbox) return;
+      if (typeof videoLightbox.close === 'function') {
+        videoLightbox.close();
+      } else {
+        videoLightbox.removeAttribute('open');
+      }
+      if (lightboxPlayer) lightboxPlayer.innerHTML = '';
+    };
+
+    const handleGalleryPrev = () => {
+      pauseAuto();
+      if (galleryContainer) {
+        galleryContainer.scrollBy({ left: -galleryContainer.clientWidth * 0.75, behavior: 'smooth' });
+        setTimeout(() => {
+          autoPosition = galleryContainer.scrollLeft;
+        }, 400);
+      }
+    };
+
+    const handleGalleryNext = () => {
+      pauseAuto();
+      if (galleryContainer) {
+        galleryContainer.scrollBy({ left: galleryContainer.clientWidth * 0.75, behavior: 'smooth' });
+        setTimeout(() => {
+          autoPosition = galleryContainer.scrollLeft;
+        }, 400);
+      }
+    };
+
+    const updateGalleryNavButtons = () => {
+      if (!galleryContainer) return;
+      if (galleryPrevBtn) {
+        galleryPrevBtn.disabled = galleryContainer.scrollLeft <= 5;
+      }
+      if (galleryNextBtn) {
+        galleryNextBtn.disabled = galleryContainer.scrollLeft + galleryContainer.clientWidth >= galleryContainer.scrollWidth - 5;
+      }
+    };
+
+    const handlePointerDown = () => {
+      dragging = true;
+      pauseAuto();
+    };
+    const handlePointerUp = () => {
+      dragging = false;
+      pauseAuto();
+      if (galleryContainer) {
+        autoPosition = galleryContainer.scrollLeft;
+      }
+    };
+    if (galleryContainer) {
+      galleryContainer.addEventListener('scroll', updateGalleryNavButtons, { passive: true });
+      galleryContainer.addEventListener('pointerdown', handlePointerDown, { passive: true });
+      galleryContainer.addEventListener('pointercancel', handlePointerUp, { passive: true });
+      galleryContainer.addEventListener('wheel', pauseAuto, { passive: true });
+      window.addEventListener('pointerup', handlePointerUp, { passive: true });
+      updateGalleryNavButtons();
+    }
+
+    if (galleryPrevBtn) galleryPrevBtn.addEventListener('click', handleGalleryPrev);
+    if (galleryNextBtn) galleryNextBtn.addEventListener('click', handleGalleryNext);
+
+    reelCards.forEach((card, idx) => {
+      card.addEventListener('click', () => {
+        openVideoAtIndex(idx);
+      });
+    });
+
+    if (lightboxClose) lightboxClose.addEventListener('click', closeLightbox);
+    if (lightboxPrev) lightboxPrev.addEventListener('click', () => openVideoAtIndex(currentLightboxIdx - 1));
+    if (lightboxNext) lightboxNext.addEventListener('click', () => openVideoAtIndex(currentLightboxIdx + 1));
+
+    if (videoLightbox) {
+      videoLightbox.addEventListener('click', (e) => {
+        if (e.target === videoLightbox) closeLightbox();
+      });
+      videoLightbox.addEventListener('close', () => {
+        if (lightboxPlayer) lightboxPlayer.innerHTML = '';
+      });
+      videoLightbox.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          openVideoAtIndex(currentLightboxIdx - 1);
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          openVideoAtIndex(currentLightboxIdx + 1);
+        }
+      });
+    }
+
     // Cleanup on unmount
     return () => {
+      if (autoScrollRaf) cancelAnimationFrame(autoScrollRaf);
+      cardVideoObservers.forEach((obs) => obs.disconnect());
+      if (galleryContainer) {
+        galleryContainer.removeEventListener('scroll', updateGalleryNavButtons);
+        galleryContainer.removeEventListener('pointerdown', handlePointerDown);
+        galleryContainer.removeEventListener('pointercancel', handlePointerUp);
+        galleryContainer.removeEventListener('wheel', pauseAuto);
+      }
+      window.removeEventListener('pointerup', handlePointerUp);
+      if (galleryPrevBtn) galleryPrevBtn.removeEventListener('click', handleGalleryPrev);
+      if (galleryNextBtn) galleryNextBtn.removeEventListener('click', handleGalleryNext);
+      if (lightboxClose) lightboxClose.removeEventListener('click', closeLightbox);
+      if (galleryContainer) galleryContainer.removeEventListener('scroll', updateGalleryNavButtons);
+      if (galleryPrevBtn) galleryPrevBtn.removeEventListener('click', handleGalleryPrev);
+      if (galleryNextBtn) galleryNextBtn.removeEventListener('click', handleGalleryNext);
+      if (lightboxClose) lightboxClose.removeEventListener('click', closeLightbox);
       clearInterval(timerInterval);
       clearTimeout(copyTimeout);
       root.removeEventListener('click', handleAnchorClick);
