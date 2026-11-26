@@ -43,7 +43,7 @@ export default function App() {
   };
 
   const navigateToPrivacy = () => {
-    window.history.pushState({}, '', '/privacy-policy');
+    window.history.pushState({ hasHomeEntry: true, page: 'privacy' }, '', '/privacy-policy');
     setRoute('privacy');
     window.scrollTo({ top: 0, behavior: 'instant' });
   };
@@ -72,6 +72,15 @@ export default function App() {
       if (privacyBtn) {
         e.preventDefault();
         navigateToPrivacy();
+        return;
+      }
+      const reelsBtn = e.target.closest('a[href="#reels"], .bz-b2');
+      if (reelsBtn) {
+        e.preventDefault();
+        const target = document.getElementById('reels') || document.querySelector('.reels-inspiration-section');
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
         return;
       }
     };

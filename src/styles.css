@@ -3670,7 +3670,7 @@ body :has(#bzx) {
   .bz-hero .bz-btns {
     display: flex;
     flex-direction: row;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     justify-content: center;
     align-items: center;
     gap: 10px;
@@ -3867,7 +3867,7 @@ body :has(#bzx) {
 
   .bz-btns {
     flex-direction: row;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     justify-content: center;
     align-items: center;
     gap: 10px;
@@ -5616,5 +5616,50 @@ body :has(#bzx) {
 
   .lightbox-head h3 {
     font-size: 15px;
+  }
+}
+
+@media (max-width: 640px) {
+  .bz-btns,
+  .bz-hero .bz-btns {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    gap: 12px !important;
+    margin-top: 24px !important;
+  }
+
+  .bzx .bz-hero .bz-btns a,
+  .bzx .bz-btns .bz-b1,
+  .bzx .bz-btns .bz-b2 {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: none !important;
+    white-space: normal !important;
+    text-align: center !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    padding: 15px 20px !important;
+    font-size: 15px !important;
+    line-height: 1.25 !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+    border-radius: 999px !important;
+  }
+
+  .bzx .bz-btns .bz-b1 {
+    color: #000000 !important;
+    background: #ffffff !important;
+    font-weight: 600 !important;
+    box-shadow: 0 5px 16px rgba(229, 38, 31, 0.45) !important;
+  }
+
+  .bzx .bz-btns .bz-b2 {
+    color: #ffffff !important;
+    background: #141414 !important;
+    border: 1px solid rgba(255, 255, 255, 0.35) !important;
   }
 }

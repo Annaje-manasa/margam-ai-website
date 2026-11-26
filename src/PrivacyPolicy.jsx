@@ -6,6 +6,13 @@ export default function PrivacyPolicy({ onNavigateHome }) {
     window.scrollTo(0, 0);
     const prevTitle = document.title;
     document.title = 'Privacy Policy - Margam360 AI';
+
+    // Enable the browser's native back button if opened directly in a new tab without prior history
+    if (!window.history.state?.hasHomeEntry) {
+      window.history.replaceState({ hasHomeEntry: true, page: 'home' }, '', '/');
+      window.history.pushState({ hasHomeEntry: true, page: 'privacy' }, '', '/privacy-policy');
+    }
+
     return () => {
       document.title = prevTitle;
     };
