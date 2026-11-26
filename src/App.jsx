@@ -2,11 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { landingHTML } from './landing_markup.js';
 import { useLandingScript } from './useLandingScript.js';
 import CheckoutPage from './CheckoutPage.jsx';
+import PrivacyPolicy from './PrivacyPolicy.jsx';
 
 export default function App() {
   const [route, setRoute] = useState(() => {
     const p = window.location.pathname.toLowerCase();
     const h = window.location.hash.toLowerCase();
+    if (p.includes('/privacy-policy') || h.includes('privacy-policy')) {
+      return 'privacy';
+    }
     if (p.includes('/checkout') || p.includes('/step/checkout') || h.includes('checkout')) {
       return 'checkout';
     }
@@ -20,7 +24,9 @@ export default function App() {
     const handlePopState = () => {
       const p = window.location.pathname.toLowerCase();
       const h = window.location.hash.toLowerCase();
-      if (p.includes('/checkout') || p.includes('/step/checkout') || h.includes('checkout')) {
+      if (p.includes('/privacy-policy') || h.includes('privacy-policy')) {
+        setRoute('privacy');
+      } else if (p.includes('/checkout') || p.includes('/step/checkout') || h.includes('checkout')) {
         setRoute('checkout');
       } else {
         setRoute('landing');
@@ -36,6 +42,12 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
+  const navigateToPrivacy = () => {
+    window.history.pushState({}, '', '/privacy-policy');
+    setRoute('privacy');
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  };
+
   const navigateToHome = () => {
     window.history.pushState({}, '', '/');
     setRoute('landing');
@@ -45,7 +57,7 @@ export default function App() {
   // Only run landing page interactive script when on landing page
   useLandingScript(containerRef, landingHTML, route === 'landing');
 
-  // Intercept clicks on checkout buttons on the landing page
+  // Intercept clicks on checkout and privacy policy buttons on the landing page
   useEffect(() => {
     if (route !== 'landing' || !containerRef.current) return;
     const el = containerRef.current;
@@ -54,6 +66,13 @@ export default function App() {
       if (btn) {
         e.preventDefault();
         navigateToCheckout();
+        return;
+      }
+      const privacyBtn = e.target.closest('a[href*="privacy-policy"]');
+      if (privacyBtn) {
+        e.preventDefault();
+        navigateToPrivacy();
+        return;
       }
     };
     el.addEventListener('click', clickHandler);
@@ -62,6 +81,10 @@ export default function App() {
 
   if (route === 'checkout') {
     return <CheckoutPage onNavigateHome={navigateToHome} />;
+  }
+
+  if (route === 'privacy') {
+    return <PrivacyPolicy onNavigateHome={navigateToHome} />;
   }
 
   return (
