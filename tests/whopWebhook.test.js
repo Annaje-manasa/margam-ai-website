@@ -252,6 +252,19 @@ async function runTests() {
     assert(parseMoneyToCents('invalid') === null, 'parseMoneyToCents("invalid") === null');
   }
 
+  // Test 13: Dynamic Whop Product/Plan ID (allows coupons & price updates from Whop directly)
+  console.log('\nTest 13: Dynamic Whop Product pricing for coupons (e.g. $74.50 or $199.00)');
+  {
+    const event = createPaymentEvent({ amount: '74.50' });
+    event.data.product_id = 'prod_kTZnTlPjQOm5P';
+    const rawBody = JSON.stringify(event);
+    const { headers } = generateWhopSignature(rawBody, TEST_SECRET);
+    const res = await handleWhopWebhook(rawBody, headers, { secret: TEST_SECRET });
+
+    assert(res.status === 200, 'Status code is 200');
+    assert(res.body.emailSent === true, 'Email IS sent for $74.50 when matched with Whop product ID');
+  }
+
   console.log('\n======================================================');
   console.log(`TOTAL TESTS: ${passed + failed} | PASSED: ${passed} | FAILED: ${failed}`);
   console.log('======================================================\n');

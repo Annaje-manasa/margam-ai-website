@@ -10,10 +10,6 @@ export default function CheckoutPage({ onNavigateHome }) {
     email: '',
   });
   const [formErrors, setFormErrors] = useState({});
-  const [coupon, setCoupon] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState('');
-  const [couponError, setCouponError] = useState('');
-  const [copied, setCopied] = useState(false);
   const [openFaq, setOpenFaq] = useState(null);
   const [isPlayingVideo, setIsPlayingVideo] = useState(false);
   const [showWhopModal, setShowWhopModal] = useState(false);
@@ -81,21 +77,6 @@ export default function CheckoutPage({ onNavigateHome }) {
     window.scrollTo({ top: 100, behavior: 'smooth' });
   };
 
-  const handleApplyCoupon = (e) => {
-    e.preventDefault();
-    if (!coupon.trim()) return;
-    const code = coupon.trim().toUpperCase();
-    setAppliedCoupon(code);
-    setCouponError('');
-  };
-
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText('LIMITED10');
-    setCopied(true);
-    setCoupon('LIMITED10');
-    setTimeout(() => setCopied(false), 2500);
-  };
-
   const toggleFaq = (index) => {
     setOpenFaq(openFaq === index ? null : index);
   };
@@ -113,17 +94,27 @@ export default function CheckoutPage({ onNavigateHome }) {
     }
   };
 
-  const basePrice = 149.00;
-  const isFreeCode = appliedCoupon && (appliedCoupon.includes('FREE') || appliedCoupon.includes('100') || appliedCoupon.includes('TEST'));
-  const discount = isFreeCode
-    ? 149.00
-    : appliedCoupon === 'LIMITED10'
-      ? 14.90
-      : 0.00;
-  const totalPrice = Math.max(0, basePrice - discount).toFixed(2);
+  const [basePrice, setBasePrice] = useState(149.00);
 
+  // Fetch live price directly from Whop
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/whop-pricing')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (isMounted && data && typeof data.price === 'number' && data.price > 0) {
+          setBasePrice(data.price);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const formattedPrice = `$${basePrice.toFixed(2)}`;
   const customerName = `${formData.firstName} ${formData.lastName}`.trim();
-  const whopCheckoutUrl = `https://whop.com/margam360/ai-reel-system/?email=${encodeURIComponent(formData.email || '')}&name=${encodeURIComponent(customerName)}${appliedCoupon ? `&coupon=${encodeURIComponent(appliedCoupon)}` : ''}`;
+  const whopCheckoutUrl = `https://whop.com/margam360/ai-reel-system/?email=${encodeURIComponent(formData.email || '')}&name=${encodeURIComponent(customerName)}`;
 
   const faqs = [
     {
@@ -155,7 +146,7 @@ export default function CheckoutPage({ onNavigateHome }) {
       a: 'Yes, you can use it for commercial and client purposes.'
     },
     {
-      q: 'Is $149 a one-time payment, or does it renew?',
+      q: `Is $${basePrice.toFixed(0)} a one-time payment, or does it renew?`,
       a: 'THIS IS A ONE TIME PAYMENT ONLY with LIFETIME VALIDITY. No subscription or recurring charges.'
     },
     {
@@ -311,7 +302,7 @@ export default function CheckoutPage({ onNavigateHome }) {
                         </div>
                       </td>
                       <td className="checkout-product-qty">× 1</td>
-                      <td className="checkout-product-price">$149.00</td>
+                      <td className="checkout-product-price">${basePrice.toFixed(2)}</td>
                     </tr>
                     <tr>
                       <td>
@@ -347,36 +338,14 @@ export default function CheckoutPage({ onNavigateHome }) {
                     </tr>
                     <tr className="subtotal-row">
                       <td colSpan="2" style={{ fontWeight: 500 }}>Subtotal</td>
-                      <td className="checkout-product-price">$149.00</td>
+                      <td className="checkout-product-price">${basePrice.toFixed(2)}</td>
                     </tr>
-                    {appliedCoupon && (
-                      <tr className="subtotal-row">
-                        <td colSpan="2" style={{ color: '#E5261F', fontWeight: 600 }}>Discount ({appliedCoupon === 'LIMITED10' ? '10% OFF' : '100% OFF'} - {appliedCoupon})</td>
-                        <td className="checkout-product-price" style={{ color: '#E5261F' }}>-${discount.toFixed(2)}</td>
-                      </tr>
-                    )}
                     <tr className="total-row">
                       <td colSpan="2">Total</td>
-                      <td className="checkout-product-price" style={{ fontSize: '16px', fontWeight: 700 }}>${totalPrice}</td>
+                      <td className="checkout-product-price" style={{ fontSize: '16px', fontWeight: 700 }}>${basePrice.toFixed(2)}</td>
                     </tr>
                   </tbody>
                 </table>
-
-                {/* Coupon Code Row (Blue Button as in Image) */}
-                <div className="checkout-coupon-row">
-                  <input
-                    type="text"
-                    value={coupon}
-                    onChange={(e) => setCoupon(e.target.value)}
-                    placeholder="Coupon Code"
-                    className="checkout-coupon-input"
-                  />
-                  <button type="button" onClick={handleApplyCoupon} className="checkout-coupon-btn">
-                    Apply
-                  </button>
-                </div>
-                {couponError && <p style={{ color: '#E5261F', fontSize: '13px', margin: '-16px 0 16px' }}>{couponError}</p>}
-                {appliedCoupon && <p style={{ color: '#2fd36e', fontSize: '13px', margin: '-16px 0 16px' }}>Coupon "{appliedCoupon}" applied!</p>}
 
                 {/* Payment Option with Whop Badge */}
                 <div className="checkout-payment-box">
@@ -410,7 +379,7 @@ export default function CheckoutPage({ onNavigateHome }) {
                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                   </svg>
-                  Place Order &nbsp;${totalPrice}
+                  Place Order &nbsp;{formattedPrice}
                 </button>
 
                 <div>
@@ -480,7 +449,7 @@ export default function CheckoutPage({ onNavigateHome }) {
             <div className="checkout-step-card">
               <span className="checkout-card-num-circle">01</span>
               <h3>Complete checkout</h3>
-              <p>Pay $149 on a secure payment page. No account needed.</p>
+              <p>Pay ${basePrice.toFixed(0)} on a secure payment page. No account needed.</p>
             </div>
             <div className="checkout-step-card active-step">
               <span className="checkout-card-num-circle">02</span>
@@ -612,33 +581,6 @@ export default function CheckoutPage({ onNavigateHome }) {
           </div>
         </div>
       </section>
-
-      {/* Sticky Bottom Coupon Bar */}
-      <div className="checkout-sticky-footer-bar">
-        <div className="checkout-sticky-bar-inner">
-          <div className="checkout-sticky-left">
-            <div className="checkout-sticky-heading">
-              Get FLAT 10% OFF
-              <span className="checkout-sticky-offer-badge">[Limited Time Offer]</span>
-            </div>
-            <div className="checkout-sticky-features">
-              <span>✓ Instant Access</span>
-              <span>✓ Lifetime Validity</span>
-            </div>
-          </div>
-
-          <div className="checkout-coupon-pill">
-            <div className="checkout-coupon-code">LIMITED10</div>
-            <button
-              type="button"
-              onClick={handleCopyCode}
-              className="checkout-coupon-copy-btn"
-            >
-              {copied ? 'Copied!' : 'Copy Code'}
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* Footer Bottom */}
       <footer className="checkout-footer-bottom">

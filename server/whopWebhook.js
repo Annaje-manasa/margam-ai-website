@@ -267,16 +267,32 @@ export function evaluatePaymentEmailEligibility(event) {
     return { eligible: false, reason: 'Missing or invalid payment amount' };
   }
 
-  // 4. Strict amount range check: $130.00 <= Amount <= $149.00 USD
-  const MIN_CENTS = 13000; // $130.00 USD
-  const MAX_CENTS = 14900; // $149.00 USD
+  // 4. Amount validation
+  // If the payment is identified as our target Whop product/plan, or dynamic pricing is enabled,
+  // allow any valid amount charged by Whop (supporting any price changes or coupons created in Whop).
+  const productId = String(data.product_id || data.product?.id || data.line_items?.[0]?.product_id || '');
+  const planId = String(data.plan_id || data.plan?.id || data.line_items?.[0]?.plan_id || '');
+  const isTargetWhopProduct = (
+    productId === 'prod_kTZnTlPjQOm5P' ||
+    planId === 'plan_CdqQLVcl1JoBk' ||
+    (process.env.WHOP_PRODUCT_ID && (productId === process.env.WHOP_PRODUCT_ID || planId === process.env.WHOP_PRODUCT_ID))
+  );
+
+  const allowDynamicPricing = isTargetWhopProduct || process.env.WHOP_ALLOW_DYNAMIC_PRICING === 'true';
+
+  const MIN_CENTS = process.env.WHOP_MIN_CENTS
+    ? parseInt(process.env.WHOP_MIN_CENTS, 10)
+    : (allowDynamicPricing ? 1 : 13000); // Allow any payment >= $0.01 for target product
+  const MAX_CENTS = process.env.WHOP_MAX_CENTS
+    ? parseInt(process.env.WHOP_MAX_CENTS, 10)
+    : (allowDynamicPricing ? 1000000 : 14900); // Up to $10,000 for target product
 
   if (amountCents < MIN_CENTS || amountCents > MAX_CENTS) {
     return {
       eligible: false,
       amountCents,
       currency,
-      reason: `Payment amount of $${(amountCents / 100).toFixed(2)} USD is outside the allowed [$130.00, $149.00] range.`
+      reason: `Payment amount of $${(amountCents / 100).toFixed(2)} USD is outside the allowed [$${(MIN_CENTS / 100).toFixed(2)}, $${(MAX_CENTS / 100).toFixed(2)}] range.`
     };
   }
 
